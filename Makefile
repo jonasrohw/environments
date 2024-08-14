@@ -159,6 +159,8 @@ build-pytorch-ngc:
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"pytorch or deepspeed\" /workspace/tests"
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"pytorch or deepspeed\" /workspace/tests"
 
 .PHONY: build-tensorflow-ngc
 build-tensorflow-ngc:
@@ -170,7 +172,26 @@ build-tensorflow-ngc:
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_TF_REPO):$(SHORT_GIT_HASH)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(NGC_TF_REPO):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m tensorflow /workspace/tests"
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m tensorflow /workspace/tests"
 
+ifeq ($(WITH_MPICH),1)
+ROCM56_TORCH13_MPI :=pytorch-1.3-tf-2.10-rocm-mpich
+else
+ROCM56_TORCH13_MPI :=pytorch-1.3-tf-2.10-rocm-ompi
+endif
+export ROCM56_TORCH13_TF_ENVIRONMENT_NAME := $(ROCM_56_PREFIX)$(ROCM56_TORCH13_MPI)
+.PHONY: build-pytorch13-tf210-rocm56
+build-pytorch13-tf210-rocm56:
+	docker build -f Dockerfile-default-rocm \
+		--build-arg BASE_IMAGE="rocm/pytorch:rocm5.6_ubuntu20.04_py3.8_pytorch_1.13.1"\
+		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
+		--build-arg HOROVOD_PIP="horovod==0.28.1" \
+		--build-arg WITH_MPICH=$(WITH_MPICH) \
+		-t $(DOCKERHUB_REGISTRY)/$(ROCM56_TORCH13_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
+		-t $(DOCKERHUB_REGISTRY)/$(ROCM56_TORCH13_TF_ENVIRONMENT_NAME)-$(VERSION) \
+		.
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(ROCM56_TORCH13_TF_ENVIRONMENT_NAME)-$(VERSION) /bin/bash -c "pip install pytest && pytest -m \"pytorch or tensorflow\" /workspace/tests"
 
 ROCM_DEEPSPEED_VERSION := 0.14.4
 WITH_MPICH=1
@@ -187,6 +208,8 @@ build-pytorch-infinityhub:
                 --build-arg WITH_MPICH=$(WITH_MPICH) \
                 -t $(DOCKERHUB_REGISTRY)/$(INFINITYHUB_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
                 .
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(INFINITYHUB_PYTORCH_REPO):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"deepspeed or pytorch\" /workspace/tests"
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(INFINITYHUB_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m pytorch /workspace/tests"
 
 
 ifeq ($(WITH_MPICH),1)
@@ -205,7 +228,7 @@ build-pytorch13-tf210-rocm56:
                -t $(DOCKERHUB_REGISTRY)/$(ROCM56_TORCH13_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
                -t $(DOCKERHUB_REGISTRY)/$(ROCM56_TORCH13_TF_ENVIRONMENT_NAME)-$(VERSION) \
                .
-
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(ROCM56_TORCH13_TF_ENVIRONMENT_NAME)-$(VERSION) /bin/bash -c "pip install pytest && pytest -m \"tensorflow or pytorch\" /workspace/tests"
 
 
 ifeq ($(WITH_MPICH),1)
@@ -224,6 +247,7 @@ build-pytorch20-tf210-rocm61:
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
                 .
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) /bin/bash -c "pip install pytest && pytest -m \"tensorflow or pytorch\" /workspace/tests"
 
 ifeq ($(WITH_MPICH),1)
 ROCM61_TORCH_MPI :=pytorch-3.10-rocm-mpich
@@ -241,7 +265,7 @@ build-pytorch20-rocm61:
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_ENVIRONMENT_NAME)-$(VERSION) \
                 .
-
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_ENVIRONMENT_NAME)-$(VERSION) /bin/bash -c "pip install pytest && pytest -m \"tensorflow or pytorch\" /workspace/tests"
 
 
 
@@ -254,6 +278,7 @@ build-tf210-rocm61:
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM61_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM61_TF_ENVIRONMENT_NAME)-$(VERSION) \
                 .
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(ROCM61_TF_ENVIRONMENT_NAME)-$(VERSION) /bin/bash -c "pip install pytest && pytest -m tensorflow /workspace/tests"
 
 
 DEEPSPEED_VERSION := 0.8.3
@@ -277,6 +302,7 @@ build-pytorch20-tf210-rocm57-deepspeed:
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(SHORT_GIT_HASH) \
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(VERSION) \
                 .
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(VERSION) /bin/bash -c "pip install pytest && pytest -m \"tensorflow or pytorch or deepspeed\" /workspace/tests"
 
 export ROCM61_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED := $(ROCM_61_PREFIX)pytorch-2.0-tf-2.10-rocm-deepspeed
 .PHONY: build-pytorch20-tf210-rocm61-deepspeed
@@ -294,6 +320,7 @@ build-pytorch20-tf210-rocm61-deepspeed:
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(SHORT_GIT_HASH) \
                 -t $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(VERSION) \
                 .
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(ROCM61_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(VERSION) /bin/bash -c "pip install pytest && pytest -m \"tensorflow or pytorch or deepspeed\" /workspace/tests"
 
 
 
@@ -315,6 +342,7 @@ build-deepspeed-gpt-neox: build-cuda-113-base
 		-t $(DOCKERHUB_REGISTRY)/$(GPT_NEOX_DEEPSPEED_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) \
 		-t $(NGC_REGISTRY)/$(GPT_NEOX_DEEPSPEED_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) \
 		.
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(GPT_NEOX_DEEPSPEED_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"deepspeed or pytorch\" /workspace/tests"
 
 TORCH_VERSION := 1.12
 TF_VERSION_SHORT := 2.11
@@ -353,6 +381,7 @@ build-tensorflow-cpu: build-cpu-py-39-base
 		$(CPU_TF_TAGS) \
 		--push \
 		.
+	docker run --platform linux/amd64 --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(CPU_TF_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"pytorch or tensorflow\" /workspace/tests"
 
 .PHONY: build-tensorflow-cuda
 build-tensorflow-cuda: build-cuda-113-base
@@ -376,6 +405,7 @@ build-tensorflow-cuda: build-cuda-113-base
 		-t $(DOCKERHUB_REGISTRY)/$(CUDA_TF_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) \
 		-t $(NGC_REGISTRY)/$(CUDA_TF_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) \
 		.
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(CUDA_TF_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"pytorch or tensorflow\" /workspace/tests"
 
 # torch 2.0 recipes
 TORCH2_VERSION := 2.0
@@ -409,6 +439,7 @@ build-pytorch-cpu: build-cpu-py-310-base
 		$(CPU_PYTORCH_TAGS) \
 		--push \
 		.
+	docker run --platform linux/amd64 --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(CPU_PYTORCH_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m pytorch /workspace/tests"
 
 .PHONY: build-pytorch-cuda
 build-pytorch-cuda: build-cuda-118-base
@@ -425,6 +456,7 @@ build-pytorch-cuda: build-cuda-118-base
 		-t $(DOCKERHUB_REGISTRY)/$(CUDA_PYTORCH_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) \
 		-t $(NGC_REGISTRY)/$(CUDA_PYTORCH_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) \
 		.
+	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(CUDA_PYTORCH_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m pytorch /workspace/tests"
 
 .PHONY: publish-tensorflow-cpu
 publish-tensorflow-cpu:
@@ -479,4 +511,3 @@ publish-cloud-images:
 	cd cloud \
 		&& packer build $(PACKER_FLAGS) -machine-readable -var "image_suffix=$(SHORT_GIT_HASH)" environments-packer.json \
 		| tee $(ARTIFACTS_DIR)/packer-log
-
