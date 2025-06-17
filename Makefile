@@ -12,6 +12,7 @@ CPU_PREFIX_39 := $(REGISTRY_REPO):py-3.9-
 CPU_PREFIX_310 := $(REGISTRY_REPO):py-3.10-
 CUDA_113_PREFIX := $(REGISTRY_REPO):cuda-11.3-
 CUDA_118_PREFIX := $(REGISTRY_REPO):cuda-11.8-
+CUDA_129_PREFIX := $(REGISTRY_REPO):cuda-12.9-
 ROCM_56_PREFIX := $(REGISTRY_REPO):rocm-5.6-
 ROCM_57_PREFIX := $(REGISTRY_REPO):rocm-5.7-
 ROCM_60_PREFIX := $(REGISTRY_REPO):rocm-6.0-
@@ -24,6 +25,7 @@ CUDA_SUFFIX := -cuda
 ARTIFACTS_DIR := /tmp/artifacts
 PYTHON_VERSION_39 := 3.9.16
 PYTHON_VERSION_310 := 3.10.12
+PYTHON_VERSION_312 := 3.12
 UBUNTU_VERSION := ubuntu20.04
 UBUNTU_IMAGE_TAG := ubuntu:20.04
 UBUNTU_VERSION_1804 := ubuntu18.04
@@ -71,7 +73,8 @@ endif
 export CPU_PY_39_BASE_NAME := $(CPU_PREFIX_39)base$(CPU_SUFFIX)
 export CPU_PY_310_BASE_NAME := $(CPU_PREFIX_310)base$(CPU_SUFFIX)
 export CUDA_113_BASE_NAME := $(CUDA_113_PREFIX)base$(CUDA_SUFFIX)
-export CUDA_118_BASE_NAME := $(CUDA_118_PREFIX)base$(CUDA_SUFFIXS)
+export CUDA_118_BASE_NAME := $(CUDA_118_PREFIX)base$(CUDA_SUFFIX)
+export CUDA_129_BASE_NAME := $(CUDA_129_PREFIX)base$(CUDA_SUFFIX)
 
 # Timeout used by packer for AWS operations. Default is 120 (30 minutes) for
 # waiting for AMI availablity. Bump to 360 attempts = 90 minutes.
@@ -82,7 +85,7 @@ export AWS_MAX_ATTEMPTS=360
 build-cpu-py-39-base:
 	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 	docker buildx create --name builder --driver docker-container --use
-	docker buildx build -f Dockerfile-base-cpu \
+       docker buildx build --file Dockerfile-base-cpu \
 	    --platform "$(PLATFORMS)" \
 		--build-arg BASE_IMAGE="$(UBUNTU_IMAGE_TAG)" \
 		--build-arg PYTHON_VERSION="$(PYTHON_VERSION_39)" \
@@ -97,7 +100,7 @@ build-cpu-py-39-base:
 build-cpu-py-310-base:
 	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 	docker buildx create --name builder --driver docker-container --use
-	docker buildx build -f Dockerfile-base-cpu \
+       docker buildx build --file Dockerfile-base-cpu \
 	    --platform "$(PLATFORMS)" \
 		--build-arg BASE_IMAGE="$(UBUNTU_IMAGE_TAG)" \
 		--build-arg PYTHON_VERSION="$(PYTHON_VERSION_310)" \
@@ -110,7 +113,7 @@ build-cpu-py-310-base:
 
 .PHONY: build-cuda-113-base
 build-cuda-113-base:
-	docker buildx build -f Dockerfile-base-cuda \
+       docker buildx build --file Dockerfile-base-cuda \
 		--build-arg BASE_IMAGE="nvidia/cuda:11.3.1-cudnn8-devel-$(UBUNTU_VERSION)" \
 		--build-arg PYTHON_VERSION="$(PYTHON_VERSION_39)" \
 		--build-arg UBUNTU_VERSION="$(UBUNTU_VERSION)" \
@@ -124,7 +127,7 @@ build-cuda-113-base:
 
 .PHONY: build-cuda-118-base
 build-cuda-118-base:
-	docker buildx build -f Dockerfile-base-cuda \
+       docker buildx build --file Dockerfile-base-cuda \
 		--build-arg BASE_IMAGE="nvidia/cuda:11.8.0-cudnn8-devel-$(UBUNTU_VERSION)" \
 		--build-arg PYTHON_VERSION="$(PYTHON_VERSION_310)" \
 		--build-arg UBUNTU_VERSION="$(UBUNTU_VERSION)" \
@@ -133,6 +136,20 @@ build-cuda-118-base:
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		-t $(DOCKERHUB_REGISTRY)/$(CUDA_118_BASE_NAME)-$(SHORT_GIT_HASH) \
+		--load \
+		.
+
+.PHONY: build-cuda-129-base
+build-cuda-129-base:
+       docker buildx build --file Dockerfile-base-cuda \
+		--build-arg BASE_IMAGE="nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04" \
+		--build-arg PYTHON_VERSION="$(PYTHON_VERSION_312)" \
+		--build-arg UBUNTU_VERSION="ubuntu24.04" \
+		--build-arg WITH_AWS_TRACE="$(WITH_AWS_TRACE)" \
+		--build-arg "$(MPI_BUILD_ARG)" \
+		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(NCCL_BUILD_ARG)" \
+		-t $(DOCKERHUB_REGISTRY)/$(CUDA_129_BASE_NAME)-$(SHORT_GIT_HASH) \
 		--load \
 		.
 
@@ -344,13 +361,13 @@ build-deepspeed-gpt-neox: build-cuda-113-base
 		.
 	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(GPT_NEOX_DEEPSPEED_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"deepspeed or pytorch\" /workspace/tests"
 
-TORCH_VERSION := 1.12
+TORCH_VERSION := 2.7.1
 TF_VERSION_SHORT := 2.11
 TF_VERSION := 2.11.1
 TF_PIP_CPU := tensorflow-cpu==$(TF_VERSION)
 TF_PIP_CUDA := tensorflow==$(TF_VERSION)
-TORCH_PIP_CPU := torch==1.12.0+cpu torchvision==0.13.0+cpu torchaudio==0.12.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
-TORCH_PIP_CUDA := torch==1.12.0+cu113 torchvision==0.13.0+cu113 torchaudio==0.12.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+TORCH_PIP_CPU := torch==2.7.1+cpu torchvision==0.22.1+cpu torchaudio==2.7.1+cpu --index-url https://download.pytorch.org/whl/cpu
+TORCH_PIP_CUDA := torch==2.7.1+cu121 torchvision==0.22.1+cu121 torchaudio==2.7.1+cu121 --index-url https://download.pytorch.org/whl/cu121
 HOROVOD_PIP_COMMAND := horovod==0.28.1
 
 export CPU_TF_ENVIRONMENT_NAME := pytorch-tensorflow$(CPU_SUFFIX)$(HPC_SUFFIX)-dev
@@ -369,7 +386,7 @@ endif
 
 .PHONY: build-tensorflow-cpu
 build-tensorflow-cpu: build-cpu-py-39-base
-	docker buildx build -f Dockerfile-default-cpu \
+       docker buildx build --file Dockerfile-default-cpu \
 	    --platform "$(PLATFORMS)" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(CPU_PY_39_BASE_NAME)-$(SHORT_GIT_HASH)" \
 		--build-arg TENSORFLOW_PIP="$(TF_PIP_CPU)" \
@@ -384,9 +401,9 @@ build-tensorflow-cpu: build-cpu-py-39-base
 	docker run --platform linux/amd64 --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(CPU_TF_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"pytorch or tensorflow\" /workspace/tests"
 
 .PHONY: build-tensorflow-cuda
-build-tensorflow-cuda: build-cuda-113-base
+build-tensorflow-cuda: build-cuda-129-base
 	docker build -f Dockerfile-default-cuda \
-		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(CUDA_113_BASE_NAME)-$(SHORT_GIT_HASH)" \
+                --build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(CUDA_129_BASE_NAME)-$(SHORT_GIT_HASH)" \
 		--build-arg TENSORFLOW_PIP="$(TF_PIP_CUDA)" \
 		--build-arg TORCH_PIP="$(TORCH_PIP_CUDA)" \
 		--build-arg TORCH_CUDA_ARCH_LIST="3.7;6.0;6.1;6.2;7.0;7.5;8.0" \
@@ -408,9 +425,9 @@ build-tensorflow-cuda: build-cuda-113-base
 	docker run --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(CUDA_TF_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m \"pytorch or tensorflow\" /workspace/tests"
 
 # torch 2.0 recipes
-TORCH2_VERSION := 2.0
-TORCH2_PIP_CPU := torch==2.0.1+cpu torchvision==0.15.2+cpu torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu
-TORCH2_PIP_CUDA := torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+TORCH2_VERSION := 2.7.1
+TORCH2_PIP_CPU := torch==2.7.1+cpu torchvision==0.22.1+cpu torchaudio==2.7.1+cpu --index-url https://download.pytorch.org/whl/cpu
+TORCH2_PIP_CUDA := torch==2.7.1+cu121 torchvision==0.22.1+cu121 torchaudio==2.7.1+cu121 --index-url https://download.pytorch.org/whl/cu121
 TORCH2_APEX_GIT_URL := https://github.com/determined-ai/apex.git@50ac8425403b98147cbb66aea9a2a27dd3fe7673
 export CPU_PYTORCH_ENVIRONMENT_NAME := pytorch$(CPU_SUFFIX)$(HPC_SUFFIX)-dev
 export CUDA_PYTORCH_ENVIRONMENT_NAME := pytorch$(CUDA_SUFFIX)$(HPC_SUFFIX)-dev
@@ -428,7 +445,7 @@ endif
 
 .PHONY: build-pytorch-cpu
 build-pytorch-cpu: build-cpu-py-310-base
-	docker buildx build -f Dockerfile-default-cpu \
+       docker buildx build --file Dockerfile-default-cpu \
 	    --platform "$(PLATFORMS)" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(CPU_PY_310_BASE_NAME)-$(SHORT_GIT_HASH)" \
 		--build-arg TORCH_PIP="$(TORCH2_PIP_CPU)" \
@@ -442,9 +459,9 @@ build-pytorch-cpu: build-cpu-py-310-base
 	docker run --platform linux/amd64 --rm -v `pwd`/tests:/workspace/tests -it $(DOCKERHUB_REGISTRY)/$(CPU_PYTORCH_ENVIRONMENT_NAME):$(SHORT_GIT_HASH) /bin/bash -c "pip install pytest && pytest -m pytorch /workspace/tests"
 
 .PHONY: build-pytorch-cuda
-build-pytorch-cuda: build-cuda-118-base
+build-pytorch-cuda: build-cuda-129-base
 	docker build -f Dockerfile-default-cuda \
-		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(CUDA_118_BASE_NAME)-$(SHORT_GIT_HASH)" \
+		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(CUDA_129_BASE_NAME)-$(SHORT_GIT_HASH)" \
 		--build-arg TORCH_PIP="$(TORCH2_PIP_CUDA)" \
 		--build-arg TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0;7.5;8.0" \
 		--build-arg APEX_GIT=$(TORCH2_APEX_GIT_URL) \
