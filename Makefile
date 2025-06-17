@@ -73,7 +73,7 @@ endif
 export CPU_PY_39_BASE_NAME := $(CPU_PREFIX_39)base$(CPU_SUFFIX)
 export CPU_PY_310_BASE_NAME := $(CPU_PREFIX_310)base$(CPU_SUFFIX)
 export CUDA_113_BASE_NAME := $(CUDA_113_PREFIX)base$(CUDA_SUFFIX)
-export CUDA_118_BASE_NAME := $(CUDA_118_PREFIX)base$(CUDA_SUFFIXS)
+export CUDA_118_BASE_NAME := $(CUDA_118_PREFIX)base$(CUDA_SUFFIX)
 export CUDA_129_BASE_NAME := $(CUDA_129_PREFIX)base$(CUDA_SUFFIX)
 
 # Timeout used by packer for AWS operations. Default is 120 (30 minutes) for
@@ -127,31 +127,31 @@ build-cuda-113-base:
 
 .PHONY: build-cuda-118-base
 build-cuda-118-base:
-        docker buildx build -f Dockerfile-base-cuda \
-                --build-arg BASE_IMAGE="nvidia/cuda:11.8.0-cudnn8-devel-$(UBUNTU_VERSION)" \
-                --build-arg PYTHON_VERSION="$(PYTHON_VERSION_310)" \
-                --build-arg UBUNTU_VERSION="$(UBUNTU_VERSION)" \
-                --build-arg WITH_AWS_TRACE="$(WITH_AWS_TRACE)" \
-                --build-arg "$(MPI_BUILD_ARG)" \
-                --build-arg "$(OFI_BUILD_ARG)" \
-                --build-arg "$(NCCL_BUILD_ARG)" \
-                -t $(DOCKERHUB_REGISTRY)/$(CUDA_118_BASE_NAME)-$(SHORT_GIT_HASH) \
-                --load \
-                .
+	docker buildx build -f Dockerfile-base-cuda \
+		--build-arg BASE_IMAGE="nvidia/cuda:11.8.0-cudnn8-devel-$(UBUNTU_VERSION)" \
+		--build-arg PYTHON_VERSION="$(PYTHON_VERSION_310)" \
+		--build-arg UBUNTU_VERSION="$(UBUNTU_VERSION)" \
+		--build-arg WITH_AWS_TRACE="$(WITH_AWS_TRACE)" \
+		--build-arg "$(MPI_BUILD_ARG)" \
+		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(NCCL_BUILD_ARG)" \
+		-t $(DOCKERHUB_REGISTRY)/$(CUDA_118_BASE_NAME)-$(SHORT_GIT_HASH) \
+		--load \
+		.
 
 .PHONY: build-cuda-129-base
 build-cuda-129-base:
-        docker buildx build -f Dockerfile-base-cuda \
-                --build-arg BASE_IMAGE="nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04" \
-                --build-arg PYTHON_VERSION="$(PYTHON_VERSION_312)" \
-                --build-arg UBUNTU_VERSION="ubuntu24.04" \
-                --build-arg WITH_AWS_TRACE="$(WITH_AWS_TRACE)" \
-                --build-arg "$(MPI_BUILD_ARG)" \
-                --build-arg "$(OFI_BUILD_ARG)" \
-                --build-arg "$(NCCL_BUILD_ARG)" \
-                -t $(DOCKERHUB_REGISTRY)/$(CUDA_129_BASE_NAME)-$(SHORT_GIT_HASH) \
-                --load \
-                .
+	docker buildx build -f Dockerfile-base-cuda \
+		--build-arg BASE_IMAGE="nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04" \
+		--build-arg PYTHON_VERSION="$(PYTHON_VERSION_312)" \
+		--build-arg UBUNTU_VERSION="ubuntu24.04" \
+		--build-arg WITH_AWS_TRACE="$(WITH_AWS_TRACE)" \
+		--build-arg "$(MPI_BUILD_ARG)" \
+		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(NCCL_BUILD_ARG)" \
+		-t $(DOCKERHUB_REGISTRY)/$(CUDA_129_BASE_NAME)-$(SHORT_GIT_HASH) \
+		--load \
+		.
 
 NGC_PYTORCH_PREFIX := nvcr.io/nvidia/pytorch
 NGC_TENSORFLOW_PREFIX := nvcr.io/nvidia/tensorflow
@@ -460,11 +460,11 @@ build-pytorch-cpu: build-cpu-py-310-base
 
 .PHONY: build-pytorch-cuda
 build-pytorch-cuda: build-cuda-129-base
-        docker build -f Dockerfile-default-cuda \
-                --build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(CUDA_129_BASE_NAME)-$(SHORT_GIT_HASH)" \
-                --build-arg TORCH_PIP="$(TORCH2_PIP_CUDA)" \
-                --build-arg TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0;7.5;8.0" \
-                --build-arg APEX_GIT=$(TORCH2_APEX_GIT_URL) \
+	docker build -f Dockerfile-default-cuda \
+		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(CUDA_129_BASE_NAME)-$(SHORT_GIT_HASH)" \
+		--build-arg TORCH_PIP="$(TORCH2_PIP_CUDA)" \
+		--build-arg TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0;7.5;8.0" \
+		--build-arg APEX_GIT=$(TORCH2_APEX_GIT_URL) \
 		--build-arg HOROVOD_PIP="$(HOROVOD_PIP_COMMAND)" \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg HOROVOD_WITH_MPI="$(HOROVOD_WITH_MPI)" \
